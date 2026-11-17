@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>UPI QR Pay</title>
+<meta name="theme-color" content="#0b3b35" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="UPI Pay" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<script src="jsQR.js"></script>
+<style>
+:root { --ink:#0b3b35; --ink-2:#14524a; --paper:#f2f7f5; --card:#fff; --line:#d5e3df; --text:#10231f; --muted:#5a716c; --accent:#f5a623; --accent-ink:#3a2500; --chip:#e7f0ed; }
+@media (prefers-color-scheme: dark) { :root { --paper:#0a1513; --card:#112320; --line:#1f3a35; --text:#e6f1ee; --muted:#8fa9a3; --chip:#17302c; --ink:#1d6b5f; --ink-2:#26867a; } }
+* { box-sizing:border-box; margin:0; }
+html { height:100%; -webkit-tap-highlight-color:transparent; }
+body { min-height:100%; background:var(--paper); color:var(--text); font-family:ui-rounded,"SF Pro Rounded","Segoe UI Variable","Segoe UI",system-ui,Roboto,sans-serif; line-height:1.45; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.app { max-width:460px; margin:0 auto; padding:20px 16px 40px; }
+header { display:flex; align-items:center; justify-content:space-between; margin:6px 0 22px; }
+.brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.15rem; }
+.brand img { width:34px; height:34px; border-radius:9px; }
+#installBtn { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:99px; padding:8px 14px; font:inherit; font-size:.85rem; font-weight:600; cursor:pointer; }
+h1 { font-size:1.9rem; line-height:1.12; letter-spacing:-.025em; margin-bottom:10px; font-weight:800; }
+.lead { color:var(--muted); font-size:.98rem; margin-bottom:22px; max-width:38ch; }
+.panel { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px; }
+.drop { display:grid; place-items:center; gap:6px; text-align:center; padding:38px 16px; cursor:pointer; border:2px dashed var(--line); border-radius:16px; background:var(--chip); transition:border-color .15s; }
+.drop:hover,.drop.over,.drop:focus-visible { border-color:var(--ink-2); outline:none; }
+.drop svg { width:40px; height:40px; color:var(--ink-2); }
+.drop strong { font-size:1.08rem; } .drop small { color:var(--muted); }
+input[type=file] { display:none; }
+.hidden { display:none !important; }
+.payee { display:flex; align-items:center; gap:12px; padding:18px 0 14px; border-bottom:1px solid var(--line); margin-bottom:14px; }
+.avatar { width:46px; height:46px; border-radius:50%; background:var(--ink); color:#fff; display:grid; place-items:center; font-weight:700; font-size:1.15rem; flex:none; }
+.payee b { display:block; font-size:1.05rem; overflow-wrap:anywhere; }
+.payee span { color:var(--muted); font-size:.88rem; overflow-wrap:anywhere; }
+.guide { background:var(--chip); border-radius:12px; padding:12px 14px; font-size:.86rem; margin-bottom:14px; color:var(--text); }
+.guide b { display:block; margin-bottom:2px; }
+.btn { display:flex; align-items:center; justify-content:center; width:100%; padding:15px; border:0; border-radius:14px; font:inherit; font-size:1rem; font-weight:700; cursor:pointer; text-decoration:none; margin-bottom:10px; transition:transform .08s; }
+.btn:active { transform:scale(.98); }
+.btn:focus-visible,#installBtn:focus-visible,.chip:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+.btn-paytm { background:#00a6d6; color:#fff; } .btn-gpay { background:#1a73e8; color:#fff; } .btn-phonepe { background:#5f259f; color:#fff; }
+.btn-soft { background:var(--chip); color:var(--text); }
+.sec { margin-top:26px; } .sec h2 { font-size:.95rem; font-weight:700; margin-bottom:10px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { border:1px solid var(--line); background:var(--card); color:var(--text); border-radius:99px; padding:8px 14px; font:inherit; font-size:.88rem; cursor:pointer; }
+.empty { color:var(--muted); font-size:.88rem; }
+#toast { position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); background:var(--text); color:var(--paper); padding:11px 18px; border-radius:99px; font-size:.9rem; font-weight:600; opacity:0; pointer-events:none; transition:.2s; max-width:90vw; z-index:99; }
+#toast.show { opacity:1; transform:translate(-50%,0); }
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><img src="icons/icon-192.png" alt="" />UPI QR Pay</div>
+    <button id="installBtn" class="hidden" type="button">Install app</button>
+  </header>
+
+  <h1>Pay from a QR image</h1>
+  <p class="lead">Upload a UPI QR screenshot. Tap your app below to auto-copy the UPI ID and open the app safely.</p>
+
+  <div class="panel">
+    <label class="drop" id="drop" for="qrInput" tabindex="0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M12 15V9M9 12l3-3 3 3"/></svg>
+      <strong>Choose QR image</strong>
+      <small>Tap here, or drop / paste an image</small>
+    </label>
+    <input type="file" id="qrInput" accept="image/*" />
+    <canvas id="qrCanvas" class="hidden"></canvas>
+
+    <div id="result" class="hidden">
+      <div class="payee">
+        <div class="avatar" id="outAvatar">M</div>
+        <div><b id="outName"></b><span id="outVpa"></span></div>
+      </div>
+
+      <div class="guide">
+        <b>1. Tap your UPI app below (auto-copies UPI ID)</b>
+        2. Inside the app, tap <b>"To UPI ID / Number"</b> &rarr; <b>Paste</b> &rarr; Pay
+      </div>
+
+      <button class="btn btn-gpay" id="gpayBtn" type="button">Copy UPI ID &amp; Open Google Pay</button>
+      <button class="btn btn-phonepe" id="phonepeBtn" type="button">Copy UPI ID &amp; Open PhonePe</button>
+      <button class="btn btn-paytm" id="paytmBtn" type="button">Copy UPI ID &amp; Open Paytm</button>
+      <button class="btn btn-soft" id="copyBtn" type="button">Copy UPI ID only</button>
+    </div>
+  </div>
+
+  <section class="sec">
+    <h2>Recent payees</h2>
+    <div class="chips" id="recent"></div>
+  </section>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const toast = m => { const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),2600); };
+const safe = (fn, fb) => { try { return fn(); } catch { return fb; } };
+const isAndroid = /Android/i.test(navigator.userAgent);
+
+/* PWA */
+if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+let dp;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); dp=e; $("installBtn").classList.remove("hidden"); });
+$("installBtn").onclick = async () => { if(!dp) return; dp.prompt(); await dp.userChoice; dp=null; $("installBtn").classList.add("hidden"); };
+window.addEventListener("appinstalled", () => $("installBtn").classList.add("hidden"));
+
+/* Clipboard helper with fallback for in-app browsers */
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  }
+}
+
+/* Recent payees */
+const getRecent = () => safe(() => JSON.parse(localStorage.getItem("upi_recent") || "[]"), []);
+function saveRecent(p) {
+  const l = getRecent().filter(x => x.pa !== p.pa); l.unshift(p);
+  safe(() => localStorage.setItem("upi_recent", JSON.stringify(l.slice(0,6))));
+  renderRecent();
+}
+function renderRecent() {
+  const l = getRecent(), box = $("recent");
+  if (!l.length) { box.innerHTML = '<span class="empty">Scanned payees appear here for one-tap payment.</span>'; return; }
+  box.innerHTML = "";
+  l.forEach(p => { const b=document.createElement("button"); b.className="chip"; b.type="button"; b.textContent=p.pn; b.title=p.pa; b.onclick=()=>openPayee(p.pa,p.pn); box.appendChild(b); });
+}
+renderRecent();
+
+/* QR decoding */
+const input=$("qrInput"), drop=$("drop");
+input.addEventListener("change", e => e.target.files[0] && decodeFile(e.target.files[0]));
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => e.dataTransfer.files[0] && decodeFile(e.dataTransfer.files[0]));
+drop.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" ") { e.preventDefault(); input.click(); } });
+document.addEventListener("paste", e => { const f=[...(e.clipboardData?.files||[])].find(f=>f.type.startsWith("image/")); if(f) decodeFile(f); });
+
+function decodeFile(file) {
+  const url = URL.createObjectURL(file), img = new Image();
+  img.onload = () => {
+    const c=$("qrCanvas"), ctx=c.getContext("2d",{willReadFrequently:true}); let code=null;
+    for (const max of [1000,600,1600]) {
+      const s=Math.min(1,max/Math.max(img.width,img.height));
+      c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+      ctx.drawImage(img,0,0,c.width,c.height);
+      const d=ctx.getImageData(0,0,c.width,c.height);
+      code=jsQR(d.data,d.width,d.height,{inversionAttempts:"attemptBoth"});
+      if (code) break;
+    }
+    URL.revokeObjectURL(url);
+    if (!code || !/^upi:\/\//i.test(code.data)) return toast("No valid UPI QR found. Try a clearer image.");
+    const u = new URL(code.data.replace(/^upi:\/\/pay/i,"https://upi.local/"));
+    const pa = u.searchParams.get("pa");
+    if (!pa) return toast("This QR has no UPI ID.");
+    const pn = u.searchParams.get("pn") || "Merchant";
+    saveRecent({pa,pn});
+    openPayee(pa,pn);
+  };
+  img.onerror = () => toast("Couldn't read that image.");
+  img.src = url; input.value = "";
+}
+
+/* Launch UPI app home screen cleanly WITHOUT /pay?pa=... to avoid NPCI/PSP security blocks */
+async function launchAppClean(pa, androidPkg, iosScheme) {
+  await copyText(pa);
+  toast(`Copied ${pa} — Paste inside app`);
+  const target = isAndroid ? `intent://#Intent;package=${androidPkg};end` : iosScheme;
+  setTimeout(() => { location.href = target; }, 350);
+}
+
+function openPayee(pa, pn) {
+  $("outName").textContent = pn;
+  $("outVpa").textContent = pa;
+  $("outAvatar").textContent = (pn.trim()[0]||"M").toUpperCase();
+  $("result").classList.remove("hidden");
+
+  // Auto-copy immediately upon decoding QR so it's already in clipboard
+  copyText(pa).then(() => toast(`Copied UPI ID: ${pa}`));
+
+  $("gpayBtn").onclick = () => launchAppClean(pa, "com.google.android.apps.nbu.paisa.user", "tez://");
+  $("phonepeBtn").onclick = () => launchAppClean(pa, "com.phonepe.app", "phonepe://");
+  $("paytmBtn").onclick = () => launchAppClean(pa, "net.one97.paytm", "paytmmp://");
+  $("copyBtn").onclick = async () => { await copyText(pa); toast(`Copied: ${pa}`); };
+}
+</script>
+</body>
+</html>
