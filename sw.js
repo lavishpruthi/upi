@@ -1,4 +1,4 @@
-const CACHE = "upi-link-v2";
+const CACHE = "upi-link-v3";
 const SHELL = ["./", "index.html", "jsQR.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
